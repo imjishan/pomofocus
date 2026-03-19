@@ -1,0 +1,5 @@
+{
+  "name": "Focus - Pomodoro & Sleep",
+  "description": "A minimalist Pomodoro app with session management, sleep mode, and analytics.",
+  "requestFramePermissions": []
+}

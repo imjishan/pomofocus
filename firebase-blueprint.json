@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "streak": { "type": "number" },
+        "totalFocusTime": { "type": "number" },
+        "dailyGoal": { "type": "number" },
+        "nextBreak": { "type": "string" },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "theme": { "type": "string", "enum": ["light", "dark"] },
+            "autoStart": { "type": "boolean" },
+            "vibration": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "A focus or sleep session",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "type": { "type": "string", "enum": ["focus", "sleep"] },
+        "duration": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "productivityLevel": { "type": "string" },
+        "title": { "type": "string" }
+      },
+      "required": ["uid", "type", "duration", "timestamp"]
+    },
+    "Preset": {
+      "title": "Preset",
+      "description": "A session preset",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "duration": { "type": "number" },
+        "autoStart": { "type": "boolean" },
+        "vibration": { "type": "boolean" },
+        "icon": { "type": "string" }
+      },
+      "required": ["uid", "title", "duration"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/sessions/{sessionId}": {
+      "schema": "Session",
+      "description": "Completed sessions"
+    },
+    "/presets/{presetId}": {
+      "schema": "Preset",
+      "description": "User session presets"
+    }
+  }
+}
