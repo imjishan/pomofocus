@@ -1,7 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, collection, query, where, addDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
 import { UserProfile, Session, Preset, Tab } from './types';
 import Header from './components/Header';
 import Navbar from './components/Navbar';
@@ -9,19 +6,48 @@ import FocusTab from './components/FocusTab';
 import SessionsTab from './components/SessionsTab';
 import SleepTab from './components/SleepTab';
 import StatsTab from './components/StatsTab';
-import Auth from './components/Auth';
 import SettingsModal from './components/SettingsModal';
 import MoreMenu from './components/MoreMenu';
 import DynamicIsland from './components/DynamicIsland';
 import { motion, AnimatePresence } from 'motion/react';
 
+const DEFAULT_PROFILE: UserProfile = {
+  uid: 'guest',
+  email: 'guest@example.com',
+  displayName: 'Guest User',
+  photoURL: 'https://picsum.photos/seed/guest/200',
+  streak: 0,
+  totalFocusTime: 0,
+  dailyGoal: 6,
+  nextBreak: '05:00',
+  settings: {
+    theme: 'light',
+    autoStart: true,
+    vibration: false,
+  },
+};
+
+const DEFAULT_PRESETS: Preset[] = [
+  { id: 'study', uid: 'guest', title: 'Study', type: 'BALANCED LEARNING', duration: 45, autoStart: true, vibration: false, icon: 'GraduationCap' },
+  { id: 'deep-work', uid: 'guest', title: 'Deep Work', type: 'FOCUS INTENSITY', duration: 90, autoStart: false, vibration: true, icon: 'Cpu' },
+  { id: 'creative', uid: 'guest', title: 'Creative', type: 'OPEN EXPLORATION', duration: 60, autoStart: false, vibration: false, icon: 'PenTool' },
+];
+
 export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [presets, setPresets] = useState<Preset[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('userProfile');
+    return saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+  });
+  const [presets, setPresets] = useState<Preset[]>(() => {
+    const saved = localStorage.getItem('presets');
+    return saved ? JSON.parse(saved) : DEFAULT_PRESETS;
+  });
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    const saved = localStorage.getItem('sessions');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [activeTab, setActiveTab] = useState<Tab>('focus');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
@@ -32,64 +58,19 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    if (userProfile.settings?.theme) {
+      setTheme(userProfile.settings.theme);
+    }
+  }, [userProfile]);
 
   useEffect(() => {
-    if (!user) {
-      setUserProfile(null);
-      setPresets([]);
-      setSessions([]);
-      return;
-    }
+    localStorage.setItem('presets', JSON.stringify(presets));
+  }, [presets]);
 
-    // Listen to user profile
-    const userRef = doc(db, 'users', user.uid);
-    const unsubProfile = onSnapshot(userRef, (doc) => {
-      if (doc.exists()) {
-        const data = doc.data() as UserProfile;
-        setUserProfile(data);
-        if (data.settings?.theme) {
-          setTheme(data.settings.theme);
-        }
-      }
-    });
-
-    // Listen to presets
-    const presetsRef = collection(db, 'presets');
-    const qPresets = query(presetsRef, where('uid', '==', user.uid));
-    const unsubPresets = onSnapshot(qPresets, (snapshot) => {
-      const presetsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Preset));
-      if (presetsData.length === 0) {
-        // Create default presets if none exist
-        const defaultPresets: Preset[] = [
-          { uid: user.uid, title: 'Study', type: 'BALANCED LEARNING', duration: 45, autoStart: true, vibration: false, icon: 'GraduationCap' },
-          { uid: user.uid, title: 'Deep Work', type: 'FOCUS INTENSITY', duration: 90, autoStart: false, vibration: true, icon: 'Cpu' },
-          { uid: user.uid, title: 'Creative', type: 'OPEN EXPLORATION', duration: 60, autoStart: false, vibration: false, icon: 'PenTool' },
-        ];
-        defaultPresets.forEach(p => addDoc(presetsRef, p));
-      } else {
-        setPresets(presetsData);
-      }
-    });
-
-    // Listen to sessions
-    const sessionsRef = collection(db, 'sessions');
-    const qSessions = query(sessionsRef, where('uid', '==', user.uid));
-    const unsubSessions = onSnapshot(qSessions, (snapshot) => {
-      setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session)));
-    });
-
-    return () => {
-      unsubProfile();
-      unsubPresets();
-      unsubSessions();
-    };
-  }, [user]);
+  useEffect(() => {
+    localStorage.setItem('sessions', JSON.stringify(sessions));
+  }, [sessions]);
 
   // Timer Logic (Lifted from FocusTab)
   useEffect(() => {
@@ -121,96 +102,64 @@ export default function App() {
     }
   }, [theme]);
 
-  const handleSessionComplete = async (duration: number) => {
-    if (!user) return;
-    
+  const handleSessionComplete = (duration: number) => {
     // Save session
-    const sessionsRef = collection(db, 'sessions');
-    await addDoc(sessionsRef, {
-      uid: user.uid,
+    const newSession: Session = {
+      id: Date.now().toString(),
+      uid: 'guest',
       type: 'focus',
       duration,
       timestamp: new Date().toISOString(),
       productivityLevel: 'PRODUCTIVE',
       title: 'Focus Session',
-    });
+    };
+    setSessions(prev => [newSession, ...prev]);
 
     // Update user stats
-    if (userProfile) {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        totalFocusTime: (userProfile.totalFocusTime || 0) + duration,
-      });
-    }
+    setUserProfile(prev => ({
+      ...prev,
+      totalFocusTime: (prev.totalFocusTime || 0) + duration,
+    }));
   };
 
-  const handlePresetUpdate = async (preset: Preset) => {
-    if (!preset.id) return;
-    const presetRef = doc(db, 'presets', preset.id);
-    const { id, ...data } = preset;
-    await updateDoc(presetRef, data);
+  const handlePresetUpdate = (preset: Preset) => {
+    setPresets(prev => prev.map(p => p.title === preset.title ? preset : p));
   };
 
-  const handleUpdateSettings = async (settings: Partial<UserProfile['settings']>) => {
-    if (!user || !userProfile) return;
-    const userRef = doc(db, 'users', user.uid);
+  const handleUpdateSettings = (settings: Partial<UserProfile['settings']>) => {
     const updatedSettings = { ...userProfile.settings, ...settings };
     if (settings.theme) {
       setTheme(settings.theme);
     }
-    await updateDoc(userRef, { settings: updatedSettings });
+    setUserProfile(prev => ({ ...prev, settings: updatedSettings }));
   };
 
-  const handleUpdateProfile = async (profile: Partial<UserProfile>) => {
-    if (!user || !userProfile) return;
-    const userRef = doc(db, 'users', user.uid);
-    await updateDoc(userRef, profile);
+  const handleUpdateProfile = (profile: Partial<UserProfile>) => {
+    setUserProfile(prev => ({ ...prev, ...profile }));
   };
 
-  const handleResetStats = async () => {
-    if (!user || !userProfile) return;
-    const userRef = doc(db, 'users', user.uid);
-    await updateDoc(userRef, {
+  const handleResetStats = () => {
+    setUserProfile(prev => ({
+      ...prev,
       totalFocusTime: 0,
       streak: 0,
-    });
+    }));
+    setSessions([]);
   };
 
-  const toggleTheme = async () => {
-    if (!user || !userProfile) return;
-    const userRef = doc(db, 'users', user.uid);
-    await updateDoc(userRef, {
-      'settings.theme': userProfile.settings.theme === 'light' ? 'dark' : 'light',
-    });
+  const toggleTheme = () => {
+    const newTheme = userProfile.settings.theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    setUserProfile(prev => ({
+      ...prev,
+      settings: { ...prev.settings, theme: newTheme }
+    }));
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-24 h-24 bg-blue-600 rounded-[32px] flex items-center justify-center text-white mb-8 shadow-2xl shadow-blue-600/20">
-          <motion.div
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-12 h-12">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg>
-          </motion.div>
-        </div>
-        <h1 className="text-4xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight mb-4">Focus</h1>
-        <p className="text-zinc-500 dark:text-zinc-400 mb-12 max-w-xs">
-          Your minimalist companion for productivity and deep work.
-        </p>
-        <Auth />
       </div>
     );
   }

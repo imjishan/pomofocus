@@ -20,6 +20,10 @@ const data = [
 ];
 
 export default function StatsTab({ userProfile, sessions }: StatsTabProps) {
+  const totalMinutes = sessions.reduce((acc, s) => acc + s.duration, 0);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
   return (
     <div className="flex flex-col pt-24 pb-32 px-6 min-h-screen relative overflow-hidden">
       {/* Streak Card */}
@@ -35,7 +39,7 @@ export default function StatsTab({ userProfile, sessions }: StatsTabProps) {
             </span>
             <div className="flex items-baseline gap-2">
               <span className="text-6xl font-black text-zinc-900 dark:text-zinc-100 tracking-tighter">
-                {userProfile?.streak || 12}
+                {userProfile?.streak || 0}
               </span>
               <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Days</span>
             </div>
@@ -46,7 +50,7 @@ export default function StatsTab({ userProfile, sessions }: StatsTabProps) {
         </div>
         <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-sm">
           <Star size={16} className="fill-blue-600 dark:fill-blue-400" />
-          <span>New Personal Best</span>
+          <span>Keep it up!</span>
         </div>
       </motion.div>
 
@@ -61,7 +65,7 @@ export default function StatsTab({ userProfile, sessions }: StatsTabProps) {
           Total Focus Time
         </span>
         <div className="text-5xl font-black text-zinc-900 dark:text-zinc-100 tracking-tighter mb-6">
-          142h 30m
+          {hours}h {minutes}m
         </div>
         <div className="flex gap-2">
           <div className="w-10 h-10 rounded-full bg-blue-600/90 backdrop-blur-md flex items-center justify-center text-white">
@@ -79,7 +83,7 @@ export default function StatsTab({ userProfile, sessions }: StatsTabProps) {
           <h3 className="text-2xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
             Weekly Activity
           </h3>
-          <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">+12% from last week</span>
+          <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Activity Overview</span>
         </div>
         
         <div className="bg-white/10 dark:bg-black/20 backdrop-blur-xl p-8 rounded-[40px] shadow-xl border border-white/20 dark:border-white/10 h-64">
@@ -111,38 +115,42 @@ export default function StatsTab({ userProfile, sessions }: StatsTabProps) {
           Recent Sessions
         </h3>
         <div className="space-y-4">
-          {[
-            { title: 'Deep Work: UI Design', time: 'Today • 10:30 AM', duration: '50m', status: 'PRODUCTIVE', icon: Monitor },
-            { title: 'Reading Research', time: 'Yesterday • 4:15 PM', duration: '25m', status: 'DEEP', icon: BookOpen },
-            { title: 'Project Documentation', time: 'Yesterday • 11:00 AM', duration: '40m', status: 'FOCUSED', icon: PenTool },
-          ].map((session, i) => {
-            const Icon = session.icon;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white/10 dark:bg-black/20 backdrop-blur-xl p-6 rounded-[32px] shadow-xl border border-white/20 dark:border-white/10 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md flex items-center justify-center text-blue-600 dark:text-blue-400">
-                    <Icon size={22} />
+          {sessions.length === 0 ? (
+            <div className="text-center py-12 bg-white/5 rounded-[32px] border border-dashed border-white/10">
+              <p className="text-zinc-500 font-medium">No sessions yet. Start focusing!</p>
+            </div>
+          ) : (
+            sessions.slice(0, 5).map((session, i) => {
+              const Icon = Monitor;
+              return (
+                <motion.div
+                  key={session.id || i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-white/10 dark:bg-black/20 backdrop-blur-xl p-6 rounded-[32px] shadow-xl border border-white/20 dark:border-white/10 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md flex items-center justify-center text-blue-600 dark:text-blue-400">
+                      <Icon size={22} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-zinc-900 dark:text-zinc-100">{session.title}</h4>
+                      <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                        {new Date(session.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-zinc-900 dark:text-zinc-100">{session.title}</h4>
-                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{session.time}</span>
+                  <div className="text-right">
+                    <div className="font-black text-zinc-900 dark:text-zinc-100">{session.duration}m</div>
+                    <span className="text-[10px] font-bold tracking-widest text-blue-600 dark:text-blue-400 uppercase">
+                      {session.productivityLevel}
+                    </span>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-black text-zinc-900 dark:text-zinc-100">{session.duration}</div>
-                  <span className="text-[10px] font-bold tracking-widest text-blue-600 dark:text-blue-400 uppercase">
-                    {session.status}
-                  </span>
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

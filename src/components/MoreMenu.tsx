@@ -1,8 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Share2, RefreshCw, HelpCircle, LogOut, X, Info } from 'lucide-react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { Share2, RefreshCw, HelpCircle } from 'lucide-react';
 
 interface MoreMenuProps {
   isOpen: boolean;
@@ -11,11 +9,6 @@ interface MoreMenuProps {
 }
 
 export default function MoreMenu({ isOpen, onClose, onResetStats }: MoreMenuProps) {
-  const handleSignOut = () => {
-    signOut(auth);
-    onClose();
-  };
-
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -80,18 +73,6 @@ export default function MoreMenu({ isOpen, onClose, onResetStats }: MoreMenuProp
                   <HelpCircle size={18} />
                 </div>
                 <span className="font-bold text-sm">Help & Support</span>
-              </button>
-
-              <div className="h-px bg-white/20 dark:bg-white/10 my-1 mx-2" />
-
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-red-500/10 transition-all active:scale-[0.98] text-red-600 dark:text-red-400"
-              >
-                <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <LogOut size={18} />
-                </div>
-                <span className="font-bold text-sm">Sign Out</span>
               </button>
             </div>
           </motion.div>
